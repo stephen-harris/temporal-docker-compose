@@ -1,0 +1,258 @@
+version: "3.5"
+services:
+  postgresql:
+    container_name: temporal-postgresql
+    environment:
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_USER: temporal
+    image: postgres:${POSTGRESQL_VERSION}
+    networks:
+      - temporal-network
+    ports:
+      - 5432:5432
+    volumes:
+      - /var/lib/postgresql/data
+  
+  temporal:
+    container_name: temporal
+    build: 
+      context: temporal
+    networks:
+      - temporal-network
+    ports:
+      - 7233:7233
+      - 7237:7237
+      - 7244:7244
+      - 8002:8002
+    depends_on:
+      - postgresql
+      - temporal-matching
+    environment:
+      - SERVICES=frontend
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - "SKIP_DEFAULT_NAMESPACE_CREATION=true"
+
+      - TEMPORAL_TLS_REQUIRE_CLIENT_AUTH=true
+      - TEMPORAL_TLS_SERVER_CA_CERT=/etc/temporal/config/certs/ca.cert
+
+      # Internode
+      - TEMPORAL_TLS_SERVER_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_TLS_SERVER_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_TLS_INTERNODE_SERVER_NAME=tls-sample
+      - TEMPORAL_TLS_INTERNODE_DISABLE_HOST_VERIFICATION=true
+      
+      # Frontend
+      - TEMPORAL_TLS_FRONTEND_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_TLS_FRONTEND_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_TLS_FRONTEND_SERVER_NAME=tls-sample
+      - TEMPORAL_TLS_FRONTEND_DISABLE_HOST_VERIFICATION=true
+      - TEMPORAL_TLS_CLIENT1_CA_CERT=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_TLS_CLIENT2_CA_CERT=/etc/temporal/config/certs/ca.cert
+      
+      # Cli?
+      - TEMPORAL_ADDRESS=temporal:7233 # used by Temporal CLI
+      - TEMPORAL_CLI_ADDRESS=temporal:7233 # used by tctl. Will be deprecated
+      - TEMPORAL_CLI_TLS_CA=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_CLI_TLS_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_CLI_TLS_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_CLI_TLS_ENABLE_HOST_VERIFICATION=false
+      - TEMPORAL_CLI_TLS_SERVER_NAME=tls-sample
+
+      # ??
+      - TEMPORAL_TLS_CA=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_TLS_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_TLS_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_TLS_ENABLE_HOST_VERIFICATION=true
+      - TEMPORAL_TLS_SERVER_NAME=tls-sample
+
+      #- TEMPORAL_AUTH_AUTHORIZER=
+      #- TEMPORAL_AUTH_CLAIM_MAPPER=
+
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+      - ./template/my_config_template.yaml:/etc/temporal/config/config_template.yaml
+      - ./ssl:/ssl
+      - ./certs:/etc/temporal/config/certs
+  
+  temporal-history:
+    container_name: temporal-history
+    image: temporalio/server:${TEMPORAL_VERSION}
+    networks:
+      - temporal-network
+    ports:
+      - 7234:7234
+      - 8000:8000
+    depends_on:
+      - postgresql
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - SERVICES=history
+
+      - SKIP_DEFAULT_NAMESPACE_CREATION=true
+
+      - TEMPORAL_TLS_REQUIRE_CLIENT_AUTH=true
+      - TEMPORAL_TLS_SERVER_CA_CERT=/etc/temporal/config/certs/ca.cert
+
+      # Internode
+      - TEMPORAL_TLS_SERVER_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_TLS_SERVER_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_TLS_INTERNODE_SERVER_NAME=tls-sample
+      - TEMPORAL_TLS_INTERNODE_DISABLE_HOST_VERIFICATION=true
+      
+      # Frontend
+      - TEMPORAL_TLS_FRONTEND_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_TLS_FRONTEND_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_TLS_FRONTEND_SERVER_NAME=tls-sample
+      - TEMPORAL_TLS_FRONTEND_DISABLE_HOST_VERIFICATION=true
+      - TEMPORAL_TLS_CLIENT1_CA_CERT=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_TLS_CLIENT2_CA_CERT=/etc/temporal/config/certs/ca.cert
+      
+      # Cli?
+      - TEMPORAL_ADDRESS=temporal:7233 # used by Temporal CLI
+      - TEMPORAL_CLI_ADDRESS=temporal:7233 # used by tctl. Will be deprecated
+      - TEMPORAL_CLI_TLS_CA=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_CLI_TLS_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_CLI_TLS_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_CLI_TLS_ENABLE_HOST_VERIFICATION=false
+      - TEMPORAL_CLI_TLS_SERVER_NAME=tls-sample
+
+      # ??
+      - TEMPORAL_TLS_CA=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_TLS_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_TLS_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_TLS_ENABLE_HOST_VERIFICATION=true
+      - TEMPORAL_TLS_SERVER_NAME=tls-sample
+
+      #- TEMPORAL_AUTH_AUTHORIZER=
+      #- TEMPORAL_AUTH_CLAIM_MAPPER=
+
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+      - ./template/my_config_template.yaml:/etc/temporal/config/config_template.yaml
+      - ./ssl:/ssl
+      - ./certs:/etc/temporal/config/certs
+  
+  temporal-matching:
+    container_name: temporal-matching
+    image: temporalio/server:${TEMPORAL_VERSION}
+    networks:
+      - temporal-network
+    ports:
+      - 7235:7235
+      - 8001:8001
+    depends_on:
+      - postgresql
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - SERVICES=matching
+
+      - SKIP_DEFAULT_NAMESPACE_CREATION=true
+
+      - TEMPORAL_TLS_REQUIRE_CLIENT_AUTH=true
+      - TEMPORAL_TLS_SERVER_CA_CERT=/etc/temporal/config/certs/ca.cert
+
+      # Internode
+      - TEMPORAL_TLS_SERVER_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_TLS_SERVER_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_TLS_INTERNODE_SERVER_NAME=tls-sample
+      - TEMPORAL_TLS_INTERNODE_DISABLE_HOST_VERIFICATION=true
+      
+      # Frontend
+      - TEMPORAL_TLS_FRONTEND_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_TLS_FRONTEND_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_TLS_FRONTEND_SERVER_NAME=tls-sample
+      - TEMPORAL_TLS_FRONTEND_DISABLE_HOST_VERIFICATION=true
+      - TEMPORAL_TLS_CLIENT1_CA_CERT=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_TLS_CLIENT2_CA_CERT=/etc/temporal/config/certs/ca.cert
+      
+      # Cli?
+      - TEMPORAL_ADDRESS=temporal:7233 # used by Temporal CLI
+      - TEMPORAL_CLI_ADDRESS=temporal:7233 # used by tctl. Will be deprecated
+      - TEMPORAL_CLI_TLS_CA=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_CLI_TLS_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_CLI_TLS_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_CLI_TLS_ENABLE_HOST_VERIFICATION=false
+      - TEMPORAL_CLI_TLS_SERVER_NAME=tls-sample
+
+      # ??
+      - TEMPORAL_TLS_CA=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_TLS_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_TLS_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_TLS_ENABLE_HOST_VERIFICATION=true
+      - TEMPORAL_TLS_SERVER_NAME=tls-sample
+
+      #- TEMPORAL_AUTH_AUTHORIZER=
+      #- TEMPORAL_AUTH_CLAIM_MAPPER=
+
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+      - ./template/my_config_template.yaml:/etc/temporal/config/config_template.yaml
+      - ./ssl:/ssl
+      - ./certs:/etc/temporal/config/certs
+  
+
+  temporal-admin-tools:
+    container_name: temporal-admin-tools
+    depends_on:
+      - temporal
+    volumes:
+      - ./certs:/etc/temporal/config/certs
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+
+      - TEMPORAL_CLI_TLS_CA=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_CLI_TLS_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_CLI_TLS_KEY=/etc/temporal/config/certs/cluster.key
+
+      - TEMPORAL_CLI_TLS_ENABLE_HOST_VERIFICATION=true
+      - TEMPORAL_CLI_TLS_SERVER_NAME=tls-sample
+      - TEMPORAL_TLS_CA=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_TLS_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_TLS_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_TLS_ENABLE_HOST_VERIFICATION=true
+      - TEMPORAL_TLS_SERVER_NAME=tls-sample
+    image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION}
+    networks:
+      - temporal-network
+    stdin_open: true
+    tty: true
+  temporal-ui:
+    container_name: temporal-ui
+    depends_on:
+      - temporal
+    volumes:
+      - ./certs:/etc/temporal/config/certs
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+      - TEMPORAL_TLS_CA=/etc/temporal/config/certs/ca.cert
+      - TEMPORAL_TLS_CERT=/etc/temporal/config/certs/cluster.pem
+      - TEMPORAL_TLS_KEY=/etc/temporal/config/certs/cluster.key
+      - TEMPORAL_TLS_ENABLE_HOST_VERIFICATION=true
+      - TEMPORAL_TLS_SERVER_NAME=tls-sample
+
+    image: temporalio/ui:${TEMPORAL_UI_VERSION}
+    networks:
+      - temporal-network
+    ports:
+      - 8080:8080
+networks:
+  temporal-network:
+    driver: bridge
+    name: temporal-network
