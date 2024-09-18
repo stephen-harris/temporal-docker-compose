@@ -12,12 +12,8 @@ Run the following command
 to create a CA, and key/certs for temporal server and client.
 
 
-## Build temporal server
-
-This image is used with a custom authorizer/claim mapper.
+## Run docker-compose
 
 ```
-docker build temporal -t my-temporal-server
+docker compose up --build
 ```
-
-
