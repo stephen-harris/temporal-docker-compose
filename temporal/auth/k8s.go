@@ -24,8 +24,6 @@ func VerifyK8sToken(tokenString string) (jwt.Token, error) {
 	//const jwksURL = "https://oidc.eks.eu-west-1.amazonaws.com/id/DBC6015902903F031E2D0F0CFCDA2044/keys"
 	var jwksURL = os.Getenv("ISSUER_URL") + "/keys";//"http://localhost:3333/keys"
 
-
-
 	// TODO cache this set
 	set, err := jwk.Fetch(
 		context.Background(),

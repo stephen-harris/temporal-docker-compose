@@ -18,7 +18,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwa"
 )
 
-func generateKeyPair() (jwk.Key, jwk.Key, error) {
+func startKeyIssuer() (jwk.Key, *httptest.Server, error) {
 
 	var kid = time.Now().Format("20060102150405")
 
@@ -46,27 +46,37 @@ func generateKeyPair() (jwk.Key, jwk.Key, error) {
 	publicKey.Set(jwk.KeyIDKey, kid)
 	privateKey.Set(jwk.KeyIDKey, kid)
 
-	return privateKey, publicKey, nil
-
-}
-
-func TestKubernetesToken(t *testing.T) {
-	
-	privateKey, publicKey, err := generateKeyPair()
-
-	if err != nil {
-		t.Fatalf(`failed to create key pair: %s\n`, err)
-	}
-
 	var keyset jwk.Set
 	keyset = jwk.NewSet()
 	keyset.AddKey(publicKey)
 
 	publicKeySetJson, err := json.Marshal(keyset)
 	if err != nil {
-		t.Fatalf(`failed to convert JWK set to JSON: %s\n`, err)
+		return nil, nil, err
 	}
 
+	// Set up a test 'issuer' 
+    srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, string(publicKeySetJson))
+	}))
+
+	return privateKey, srv, nil
+
+}
+
+func TestKubernetesToken(t *testing.T) {
+	
+	privateKey, srv, err := startKeyIssuer()
+	defer srv.Close()
+
+	if err != nil {
+		t.Fatalf(`failed to create key pair and start server: %s\n`, err)
+	}
+
+	os.Setenv("ISSUER_URL", srv.URL)
+	os.Setenv("COGNITO_ISSUER_URL", "http://not.this.url")
+	
 	// Create the token
 	kc := &KubernetesClaim{
         Namespace: "some-client-namespace",
@@ -77,16 +87,6 @@ func TestKubernetesToken(t *testing.T) {
             Name: "service-account-name",
         },
     }
-
-	// Set up a test 'issuer' 
-    srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, string(publicKeySetJson))
-	}))
-	defer srv.Close()
-	os.Setenv("ISSUER_URL", srv.URL)
-	os.Setenv("COGNITO_ISSUER_URL", "http://not.this.url")
-	
 
 	token, err := jwt.NewBuilder().
 		Claim(`kubernetes.io`, kc).
@@ -136,35 +136,19 @@ func TestKubernetesToken(t *testing.T) {
 
 func TestAdminCognitoToken(t *testing.T) {
 	
-
-	privateKey, publicKey, err := generateKeyPair()
-
+	privateKey, srv, err := startKeyIssuer()
+	defer srv.Close()
 	if err != nil {
-		t.Fatalf(`failed to create key pair: %s\n`, err)
+		t.Fatalf(`failed to create key pair and start server: %s\n`, err)
 	}
 
-	var keyset jwk.Set
-	keyset = jwk.NewSet()
-	keyset.AddKey(publicKey)
-
-	publicKeySetJson, err := json.Marshal(keyset)
-	if err != nil {
-		t.Fatalf(`failed to convert JWK set to JSON: %s\n`, err)
-	}
+	os.Setenv("COGNITO_ISSUER_URL", srv.URL)
 
 	// Create the token
 	cc := &CognitoClaim{
 		"kaluza:mars",
 		"kaluza:metering-industry-abstraction",
     }
-
-	// Set up a test 'issuer' 
-    srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, string(publicKeySetJson))
-	}))
-	defer srv.Close()
-	os.Setenv("COGNITO_ISSUER_URL", srv.URL)
 
 	token, err := jwt.NewBuilder().
 		Claim(`cognito:groups`, cc).
@@ -200,33 +184,19 @@ func TestAdminCognitoToken(t *testing.T) {
 func TestNonAdminCognitoToken(t *testing.T) {
 	
 
-	privateKey, publicKey, err := generateKeyPair()
+	privateKey, srv, err := startKeyIssuer()
+	defer srv.Close()
 
 	if err != nil {
-		t.Fatalf(`failed to create key pair: %s\n`, err)
+		t.Fatalf(`failed to create key pair and start server: %s\n`, err)
 	}
-
-	var keyset jwk.Set
-	keyset = jwk.NewSet()
-	keyset.AddKey(publicKey)
-
-	publicKeySetJson, err := json.Marshal(keyset)
-	if err != nil {
-		t.Fatalf(`failed to convert JWK set to JSON: %s\n`, err)
-	}
+	
+	os.Setenv("COGNITO_ISSUER_URL", srv.URL)
 
 	// Create the token
 	cc := &CognitoClaim{
 		"kaluza:migration-tooling",
     }
-
-	// Set up a test 'issuer' 
-    srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, string(publicKeySetJson))
-	}))
-	defer srv.Close()
-	os.Setenv("COGNITO_ISSUER_URL", srv.URL)
 
 	token, err := jwt.NewBuilder().
 		Claim(`cognito:groups`, cc).
@@ -270,5 +240,87 @@ func TestNonAdminCognitoToken(t *testing.T) {
 	
 	if (! slices.Equal(keys, []string{"migration-tooling-ns"})) {
 		t.Fatalf(`Expected only migration-tooling-ns namespace. Found: %v`, keys)
+	}
+}
+
+func TestNoToken(t *testing.T) {
+	
+	claimMaper := NewMyClaimMapper(nil)
+
+	authInfo := &authorization.AuthInfo{}
+
+	claims, _:= claimMaper.GetClaims(authInfo)
+	
+	// Check admin system access
+	if (claims.System != authorization.RoleUndefined) {
+		t.Fatalf(`Expected system role to be undefined. Instead got %v`, claims.System)
+	}
+	
+	if (claims.Namespaces != nil) {
+		t.Fatalf(`Expected no namespace permissions`)
+	}
+	
+}
+
+func TestInvalidTokenFormat(t *testing.T) {
+	
+	claimMaper := NewMyClaimMapper(nil)
+
+	authInfo := &authorization.AuthInfo{
+		AuthToken: `Invalid`,
+	}
+
+	claims, _:= claimMaper.GetClaims(authInfo)
+	
+	if (claims != nil) {
+		t.Fatalf(`Expected no permissions for invalid token`)
+	}
+	
+}
+
+func TestExpiredCognitoToken(t *testing.T) {
+	
+	privateKey, srv, err := startKeyIssuer()
+	defer srv.Close()
+
+	if err != nil {
+		t.Fatalf(`failed to create key pair and start server: %s\n`, err)
+	}
+	os.Setenv("COGNITO_ISSUER_URL", srv.URL)
+
+	// Create the token
+	cc := &CognitoClaim{
+		"kaluza:mars",
+		"kaluza:metering-industry-abstraction",
+    }
+
+	token, err := jwt.NewBuilder().
+		Claim(`cognito:groups`, cc).
+		Subject(`c4a100b2-5241-4f28-9823-25f5a08be940`).
+		Expiration(time.Now().AddDate(-1, 0, 0)).
+		IssuedAt(time.Now()).
+		Issuer(os.Getenv("COGNITO_ISSUER_URL")).
+	//	Audience([]string{`temporal-service`}).
+		Build()
+
+
+	// Sign the token and generate a payload
+	tokenString, err := jwt.Sign(token, jwt.WithKey(jwa.RS256, privateKey))
+	if err != nil {
+		fmt.Printf("failed to generate signed payload: %s\n", err)
+		os.Exit(1)
+	}
+	
+	claimMaper := NewMyClaimMapper(nil)
+
+	authInfo := &authorization.AuthInfo{
+		AuthToken: `Bearer ` + string(tokenString),
+	}
+
+	claims, _:= claimMaper.GetClaims(authInfo)
+	
+	// Check admin system access
+	if (claims != nil) {
+		t.Fatalf(`Expected no permissions for expired token`)
 	}
 }

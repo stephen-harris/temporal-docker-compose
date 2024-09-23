@@ -22,9 +22,8 @@ WORKDIR /home/builder
 
 # cache Temporal packages as a docker layer
 COPY ./go* ./*.go Makefile ./
-COPY ./auth ./auth
 RUN go mod download
-
+COPY ./auth ./auth
 RUN CGO_ENABLED=0 make temporal-server
 
 ##### Temporal server #####
