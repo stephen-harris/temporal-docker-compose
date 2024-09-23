@@ -37,16 +37,21 @@ services:
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
       - "SKIP_DEFAULT_NAMESPACE_CREATION=true"
 
+      # Configure custom Claim Mapper
+      - ISSUER_URL=http://jwtissuer:3333
+      - COGNITO_ISSUER_URL=https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_6LhKXX71S
+
+      # Enable TLS
       - TEMPORAL_TLS_REQUIRE_CLIENT_AUTH=true
       - TEMPORAL_TLS_SERVER_CA_CERT=/etc/temporal/config/certs/ca.cert
 
-      # Internode
+      # Internode mTLS
       - TEMPORAL_TLS_SERVER_CERT=/etc/temporal/config/certs/cluster.pem
       - TEMPORAL_TLS_SERVER_KEY=/etc/temporal/config/certs/cluster.key
       - TEMPORAL_TLS_INTERNODE_SERVER_NAME=tls-sample
       - TEMPORAL_TLS_INTERNODE_DISABLE_HOST_VERIFICATION=true
       
-      # Frontend
+      # Frontend mTLS
       - TEMPORAL_TLS_FRONTEND_CERT=/etc/temporal/config/certs/cluster.pem
       - TEMPORAL_TLS_FRONTEND_KEY=/etc/temporal/config/certs/cluster.key
       - TEMPORAL_TLS_FRONTEND_SERVER_NAME=tls-sample
@@ -54,7 +59,7 @@ services:
       - TEMPORAL_TLS_CLIENT1_CA_CERT=/etc/temporal/config/certs/ca.cert
       - TEMPORAL_TLS_CLIENT2_CA_CERT=/etc/temporal/config/certs/ca.cert
       
-      # Cli?
+      # CLI mTLS
       - TEMPORAL_ADDRESS=temporal:7233 # used by Temporal CLI
       - TEMPORAL_CLI_ADDRESS=temporal:7233 # used by tctl. Will be deprecated
       - TEMPORAL_CLI_TLS_CA=/etc/temporal/config/certs/ca.cert
@@ -63,20 +68,17 @@ services:
       - TEMPORAL_CLI_TLS_ENABLE_HOST_VERIFICATION=false
       - TEMPORAL_CLI_TLS_SERVER_NAME=tls-sample
 
-      # ??
+      # ?? mTLS?
       - TEMPORAL_TLS_CA=/etc/temporal/config/certs/ca.cert
       - TEMPORAL_TLS_CERT=/etc/temporal/config/certs/cluster.pem
       - TEMPORAL_TLS_KEY=/etc/temporal/config/certs/cluster.key
       - TEMPORAL_TLS_ENABLE_HOST_VERIFICATION=true
       - TEMPORAL_TLS_SERVER_NAME=tls-sample
 
-      #- TEMPORAL_AUTH_AUTHORIZER=
-      #- TEMPORAL_AUTH_CLAIM_MAPPER=
 
     volumes:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
       - ./template/my_config_template.yaml:/etc/temporal/config/config_template.yaml
-      - ./ssl:/ssl
       - ./certs:/etc/temporal/config/certs
   
   temporal-history:
@@ -100,16 +102,17 @@ services:
 
       - SKIP_DEFAULT_NAMESPACE_CREATION=true
 
+      # Enable TLS
       - TEMPORAL_TLS_REQUIRE_CLIENT_AUTH=true
       - TEMPORAL_TLS_SERVER_CA_CERT=/etc/temporal/config/certs/ca.cert
 
-      # Internode
+      # Internode mTLS
       - TEMPORAL_TLS_SERVER_CERT=/etc/temporal/config/certs/cluster.pem
       - TEMPORAL_TLS_SERVER_KEY=/etc/temporal/config/certs/cluster.key
       - TEMPORAL_TLS_INTERNODE_SERVER_NAME=tls-sample
       - TEMPORAL_TLS_INTERNODE_DISABLE_HOST_VERIFICATION=true
       
-      # Frontend
+      # Frontend mTLS
       - TEMPORAL_TLS_FRONTEND_CERT=/etc/temporal/config/certs/cluster.pem
       - TEMPORAL_TLS_FRONTEND_KEY=/etc/temporal/config/certs/cluster.key
       - TEMPORAL_TLS_FRONTEND_SERVER_NAME=tls-sample
@@ -117,7 +120,7 @@ services:
       - TEMPORAL_TLS_CLIENT1_CA_CERT=/etc/temporal/config/certs/ca.cert
       - TEMPORAL_TLS_CLIENT2_CA_CERT=/etc/temporal/config/certs/ca.cert
       
-      # Cli?
+      # CLI mTLS
       - TEMPORAL_ADDRESS=temporal:7233 # used by Temporal CLI
       - TEMPORAL_CLI_ADDRESS=temporal:7233 # used by tctl. Will be deprecated
       - TEMPORAL_CLI_TLS_CA=/etc/temporal/config/certs/ca.cert
@@ -126,15 +129,12 @@ services:
       - TEMPORAL_CLI_TLS_ENABLE_HOST_VERIFICATION=false
       - TEMPORAL_CLI_TLS_SERVER_NAME=tls-sample
 
-      # ??
+      # ?? mTLS?
       - TEMPORAL_TLS_CA=/etc/temporal/config/certs/ca.cert
       - TEMPORAL_TLS_CERT=/etc/temporal/config/certs/cluster.pem
       - TEMPORAL_TLS_KEY=/etc/temporal/config/certs/cluster.key
       - TEMPORAL_TLS_ENABLE_HOST_VERIFICATION=true
       - TEMPORAL_TLS_SERVER_NAME=tls-sample
-
-      #- TEMPORAL_AUTH_AUTHORIZER=
-      #- TEMPORAL_AUTH_CLAIM_MAPPER=
 
     volumes:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
@@ -163,16 +163,17 @@ services:
 
       - SKIP_DEFAULT_NAMESPACE_CREATION=true
 
+      # Enable TLS
       - TEMPORAL_TLS_REQUIRE_CLIENT_AUTH=true
       - TEMPORAL_TLS_SERVER_CA_CERT=/etc/temporal/config/certs/ca.cert
 
-      # Internode
+      # Internode mTLS
       - TEMPORAL_TLS_SERVER_CERT=/etc/temporal/config/certs/cluster.pem
       - TEMPORAL_TLS_SERVER_KEY=/etc/temporal/config/certs/cluster.key
       - TEMPORAL_TLS_INTERNODE_SERVER_NAME=tls-sample
       - TEMPORAL_TLS_INTERNODE_DISABLE_HOST_VERIFICATION=true
       
-      # Frontend
+      # Frontend mTLS
       - TEMPORAL_TLS_FRONTEND_CERT=/etc/temporal/config/certs/cluster.pem
       - TEMPORAL_TLS_FRONTEND_KEY=/etc/temporal/config/certs/cluster.key
       - TEMPORAL_TLS_FRONTEND_SERVER_NAME=tls-sample
@@ -180,7 +181,7 @@ services:
       - TEMPORAL_TLS_CLIENT1_CA_CERT=/etc/temporal/config/certs/ca.cert
       - TEMPORAL_TLS_CLIENT2_CA_CERT=/etc/temporal/config/certs/ca.cert
       
-      # Cli?
+      # CLI mTLS
       - TEMPORAL_ADDRESS=temporal:7233 # used by Temporal CLI
       - TEMPORAL_CLI_ADDRESS=temporal:7233 # used by tctl. Will be deprecated
       - TEMPORAL_CLI_TLS_CA=/etc/temporal/config/certs/ca.cert
@@ -189,15 +190,12 @@ services:
       - TEMPORAL_CLI_TLS_ENABLE_HOST_VERIFICATION=false
       - TEMPORAL_CLI_TLS_SERVER_NAME=tls-sample
 
-      # ??
+      # ?? mTLS?
       - TEMPORAL_TLS_CA=/etc/temporal/config/certs/ca.cert
       - TEMPORAL_TLS_CERT=/etc/temporal/config/certs/cluster.pem
       - TEMPORAL_TLS_KEY=/etc/temporal/config/certs/cluster.key
       - TEMPORAL_TLS_ENABLE_HOST_VERIFICATION=true
       - TEMPORAL_TLS_SERVER_NAME=tls-sample
-
-      #- TEMPORAL_AUTH_AUTHORIZER=
-      #- TEMPORAL_AUTH_CLAIM_MAPPER=
 
     volumes:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
@@ -232,6 +230,7 @@ services:
       - temporal-network
     stdin_open: true
     tty: true
+  
   temporal-ui:
     container_name: temporal-ui
     depends_on:
@@ -247,11 +246,32 @@ services:
       - TEMPORAL_TLS_ENABLE_HOST_VERIFICATION=true
       - TEMPORAL_TLS_SERVER_NAME=tls-sample
 
+      - TEMPORAL_AUTH_ENABLED=true
+      - TEMPORAL_AUTH_PROVIDER_URL=https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_6LhKXX71S
+      - TEMPORAL_AUTH_CLIENT_ID=8ajjlg72osq79ilenu128tcrv
+      - TEMPORAL_AUTH_CALLBACK_URL=http://localhost:8080/auth/sso_callback
+
     image: temporalio/ui:${TEMPORAL_UI_VERSION}
     networks:
       - temporal-network
     ports:
       - 8080:8080
+
+  jwtissuer:
+    container_name: jwtissuer
+    build: 
+      context: jwt-issuer
+    networks:
+      - temporal-network
+    ports:
+      - 3333:3333
+
+    environment:
+      - KEY_DIR=/tmp/secrets
+
+    volumes:
+      - ./certs:/tmp/secrets
+  
 networks:
   temporal-network:
     driver: bridge
